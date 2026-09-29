@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  DEFAULT_TEST_SIZE,
+  getTestSize,
   measureDownload,
   measureLatency,
   measureUpload,
@@ -10,6 +12,7 @@ import {
   warmUpUpload,
   type Quality,
   type SpeedSample,
+  type TestSizeId,
 } from "@/lib/speedtest/measure";
 import { getServer, type TestServer } from "@/lib/speedtest/servers";
 
@@ -63,6 +66,11 @@ export interface SpeedTestState {
   running: boolean;
   server: TestServer;
   setServerId: (id: string) => void;
+  /** Payload size the next run will use. */
+  sizeId: TestSizeId;
+  setSizeId: (id: TestSizeId) => void;
+  /** Human readable label for the selected size, e.g. "50 MB". */
+  sizeLabel: string;
   start: () => void;
   stop: () => void;
   reset: () => void;
@@ -76,6 +84,7 @@ export interface SpeedTestState {
  */
 export function useSpeedTest(initialServerId: string): SpeedTestState {
   const [serverId, setServerId] = useState(initialServerId);
+  const [sizeId, setSizeId] = useState<TestSizeId>(DEFAULT_TEST_SIZE);
   const [phase, setPhase] = useState<TestPhase>("idle");
   const [live, setLive] = useState(0);
   const [result, setResult] = useState<SpeedResult>(EMPTY_RESULT);
@@ -116,6 +125,9 @@ export function useSpeedTest(initialServerId: string): SpeedTestState {
     controllerRef.current = controller;
     const { signal } = controller;
     const target = getServer(serverId);
+    // Resolved when the run starts, not when it is configured, so changing the
+    // selector mid-test cannot alter a measurement already under way.
+    const payload = getTestSize(sizeId).bytes;
 
     setPhase("preparing");
     setLive(0);
@@ -140,7 +152,7 @@ export function useSpeedTest(initialServerId: string): SpeedTestState {
 
         // 3. Download, sampling as it arrives.
         setPhase("download");
-        const download = await measureDownload(target, signal, (sample) => {
+        const download = await measureDownload(target, signal, payload, (sample) => {
           setLive(sample.mbps);
           setDownloadSamples((current) => [...current, sample]);
         });
@@ -155,7 +167,7 @@ export function useSpeedTest(initialServerId: string): SpeedTestState {
 
         setPhase("upload");
         try {
-          const upload = await measureUpload(target, signal, (sample) => {
+          const upload = await measureUpload(target, signal, payload, (sample) => {
             setLive(sample.mbps);
             setUploadSamples((current) => [...current, sample]);
           });
@@ -191,7 +203,7 @@ export function useSpeedTest(initialServerId: string): SpeedTestState {
         if (controllerRef.current === controller) controllerRef.current = null;
       }
     })();
-  }, [serverId]);
+  }, [serverId, sizeId]);
 
   return {
     phase,
@@ -205,6 +217,9 @@ export function useSpeedTest(initialServerId: string): SpeedTestState {
     running: phase !== "idle" && phase !== "done" && phase !== "error",
     server,
     setServerId,
+    sizeId,
+    setSizeId,
+    sizeLabel: getTestSize(sizeId).label,
     start,
     stop,
     reset,

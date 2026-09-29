@@ -12,6 +12,7 @@ import {
   TEST_SERVERS,
 } from "@/lib/speedtest/servers";
 import type { Quality, SpeedSample } from "@/lib/speedtest/measure";
+import { PHASE_DURATION, TEST_SIZES } from "@/lib/speedtest/measure";
 
 /** Formats a Mbps reading: one decimal below 10, whole numbers above. */
 function formatMbps(value: number | null): string {
@@ -250,6 +251,9 @@ export function SpeedTestPanel() {
     running,
     server,
     setServerId,
+    sizeId,
+    setSizeId,
+    sizeLabel,
     start,
     stop,
     reset,
@@ -260,39 +264,56 @@ export function SpeedTestPanel() {
   const downloading = phase === "download";
   const uploading = phase === "upload";
 
-  // The dial follows whichever phase is on screen, then holds the result.
+  /*
+   * The dial follows whichever phase is on screen, then holds the download.
+   *
+   * Two text bugs are fixed here. The unit used to read "Mbps up" during upload,
+   * which reads as a different unit rather than the same one qualified by
+   * direction - the direction already has its own caption below, so the unit is
+   * just "Mbps" either way. And the caption used to say "Download" whenever the
+   * test was not running, including after a *completed* run whose headline
+   * figure was the upload one; it now names the phase actually on screen.
+   */
+  const dialShowingUpload = uploading;
   const dialValue = running
-    ? uploading
+    ? dialShowingUpload
       ? (result.upload ?? live)
       : live
     : (result.download ?? 0);
-  const dialUnit = running ? (uploading ? "Mbps up" : "Mbps") : "Mbps";
-  const dialLabel = running ? (uploading ? "Upload" : "Download") : "Download";
+  const dialUnit = "Mbps";
+  const dialLabel = running
+    ? dialShowingUpload
+      ? "Upload"
+      : "Download"
+    : finished
+      ? "Test complete"
+      : "Ready";
   // The dial takes the accent of the direction on screen, so during the upload
   // phase the arc, unit and caption turn tertiary alongside the upload graph.
-  const dialColor = uploading ? UPLOAD_COLOR : DOWNLOAD_COLOR;
+  const dialColor = dialShowingUpload ? UPLOAD_COLOR : DOWNLOAD_COLOR;
 
   // If the page is on localhost, a same-origin server would measure loopback.
   const localTrap = server.sameOrigin && isLocalhostPage();
 
   /*
-   * Bring the graphs into view when a test starts on a phone.
+   * Bring the graphs into view when a test *ends* on a phone.
    *
    * On a narrow screen the dial and its controls fill the first viewport, so the
-   * graphs that the whole test is drawing into sit entirely below the fold. The
-   * user taps Start and then sees nothing happen, which reads as the test having
-   * not started. Scrolling once, at the moment the run begins, puts the thing
-   * being measured on screen.
+   * graphs the whole test drew into sit below the fold. Scrolling when the run
+   * finishes puts the results in front of the reader at the moment they have
+   * something to look at, which is when they want them.
    *
-   * Scoped to small screens on purpose: on a desktop the graphs are already
-   * visible beside the dial, and yanking the page out from under someone
-   * mid-click would be hostile. Also skipped when the reader has asked for
-   * reduced motion, and only ever scrolled towards the graphs - never away from
-   * a control the user may be about to need.
+   * Deliberately not on start: that yanked the page away while the test was
+   * still running and left the reader watching an empty graph scroll away,
+   * with the results landing somewhere they had not scrolled back to.
+   *
+   * Scoped to small screens - on a desktop the graphs are already visible, and
+   * moving the page out from under someone would be hostile - and skipped
+   * entirely under `prefers-reduced-motion`.
    */
   const graphsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (phase !== "download") return;
+    if (!finished) return;
 
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     const narrow = window.matchMedia?.("(max-width: 1023px)").matches;
@@ -302,7 +323,7 @@ export function SpeedTestPanel() {
       behavior: reduced ? "auto" : "smooth",
       block: "start",
     });
-  }, [phase]);
+  }, [finished]);
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -417,19 +438,46 @@ export function SpeedTestPanel() {
           </div>
         </div>
 
-        <div className="flex justify-end">
-          <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-end">
+          <div className="min-w-0">
+            <p className="mb-1.5 text-label-md text-on-surface-variant">
+              Test size
+            </p>
+            <SegmentedButtons
+              label="Test size"
+              options={TEST_SIZES.map((entry) => ({
+                value: entry.id,
+                label: entry.label,
+                // Changing the payload mid-transfer would mean the two phases
+                // were measured over different amounts of data.
+                disabled: running,
+              }))}
+              value={sizeId}
+              onValueChange={setSizeId}
+            />
+          </div>
+          <div className="min-w-0">
+            <p className="mb-1.5 text-label-md text-on-surface-variant">
+              Test server
+            </p>
             <SegmentedButtons
               label="Test server"
               options={TEST_SERVERS.map((entry) => ({
                 value: entry.id,
                 label: entry.label,
+                disabled: running,
               }))}
               value={server.id}
               onValueChange={setServerId}
             />
           </div>
         </div>
+
+        <p className="text-body-sm text-on-surface-variant">
+          Each phase runs for {PHASE_DURATION / 1000} seconds, moving up to {sizeLabel}{" "}
+          per direction. A larger size keeps the connection working harder for
+          longer, so it suits a fast line.
+        </p>
 
         {localTrap ? (
           <p className="rounded-2xl bg-error-container px-4 py-3 text-body-sm text-on-error-container">
