@@ -63,6 +63,14 @@ export interface SpeedGaugeProps {
    * Without this the upload phase showed a blue arc next to a pink graph.
    */
   color?: string;
+  /**
+   * Replaces the live reading with a completion notice.
+   *
+   * Once a test is over the dial has nothing left to measure, so holding the
+   * last number there invites reading it as a current speed - a figure that is
+   * really a summary. Saying so plainly is the honest thing to put on screen.
+   */
+  complete?: boolean;
   /** Adds a pulsing highlight while a test is running. */
   active?: boolean;
   className?: string;
@@ -73,11 +81,15 @@ export function SpeedGauge({
   unit,
   label,
   color = "var(--color-primary)",
+  complete = false,
   active = false,
   className,
 }: SpeedGaugeProps) {
-  const fraction = normalise(value);
+  const fraction = complete ? 0 : normalise(value);
   const track = arcPath(CENTER, CENTER, RADIUS, START_ANGLE, START_ANGLE + SWEEP);
+  // Completed fills the whole sweep, so the dial reads as a finished state
+  // rather than an empty one waiting to be filled.
+  const arcFraction = complete ? 1 : fraction;
 
   return (
     <div className={cn("relative grid place-items-center", className)}>
@@ -86,11 +98,17 @@ export function SpeedGauge({
         width={SIZE}
         height={SIZE}
         className="max-w-full"
-        role="meter"
-        aria-valuemin={0}
-        aria-valuemax={MAX_MBPS}
-        aria-valuenow={Math.round(value)}
-        aria-label={`${label}: ${value < 10 ? value.toFixed(1) : Math.round(value)} ${unit}`}
+        // The completion notice is not a measurement, so the element is no
+        // longer a meter and must not report a value.
+        role={complete ? "status" : "meter"}
+        aria-valuemin={complete ? undefined : 0}
+        aria-valuemax={complete ? undefined : MAX_MBPS}
+        aria-valuenow={complete ? undefined : Math.round(value)}
+        aria-label={
+          complete
+            ? "Test complete"
+            : `${label}: ${value < 10 ? value.toFixed(1) : Math.round(value)} ${unit}`
+        }
       >
         {/* Track */}
         <path
@@ -114,14 +132,14 @@ export function SpeedGauge({
           `pathLength` normalises the geometry so the dash maths is in 0-1 units
           and does not have to know the real arc length.
         */}
-        {fraction > 0.001 && (
+        {arcFraction > 0.001 && (
           <path
             d={track}
             fill="none"
             strokeWidth={STROKE}
             strokeLinecap="round"
             pathLength={1}
-            strokeDasharray={`${fraction} 1`}
+            strokeDasharray={`${arcFraction} 1`}
             className={cn(
               "transition-[stroke-dasharray] duration-medium2 ease-decelerate",
               active && "animate-pulse",
@@ -149,32 +167,45 @@ export function SpeedGauge({
           );
         })}
 
-        {/* Centre reading */}
-        <text
-          x={CENTER}
-          y={CENTER - 14}
-          textAnchor="middle"
-          className="fill-on-surface text-[3.25rem] font-semibold"
-          style={{ fontVariantNumeric: "tabular-nums" }}
-        >
-          {value < 10 ? value.toFixed(1) : Math.round(value)}
-        </text>
-        <text
-          x={CENTER}
-          y={CENTER + 22}
-          textAnchor="middle"
-          className="text-[0.95rem] font-medium"
-          style={{ fill: color }}
-        >
-          {unit}
-        </text>
+        {/* Centre reading, or the completion notice once there is nothing to read. */}
+        {complete ? (
+          <text
+            x={CENTER}
+            y={CENTER + 4}
+            textAnchor="middle"
+            className="fill-on-surface text-[2rem] font-semibold"
+          >
+            Completed
+          </text>
+        ) : (
+          <>
+            <text
+              x={CENTER}
+              y={CENTER - 14}
+              textAnchor="middle"
+              className="fill-on-surface text-[3.25rem] font-semibold"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              {value < 10 ? value.toFixed(1) : Math.round(value)}
+            </text>
+            <text
+              x={CENTER}
+              y={CENTER + 22}
+              textAnchor="middle"
+              className="text-[0.95rem] font-medium"
+              style={{ fill: color }}
+            >
+              {unit}
+            </text>
+          </>
+        )}
         <text
           x={CENTER}
           y={CENTER + 48}
           textAnchor="middle"
           className="fill-on-surface-variant text-[0.8rem]"
         >
-          {label}
+          {complete ? "Speed test" : label}
         </text>
       </svg>
     </div>

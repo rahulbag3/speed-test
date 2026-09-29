@@ -21,20 +21,22 @@ export interface SpeedSample {
 export type Direction = "download" | "upload";
 
 /**
- * The test is time-boxed, not size-boxed.
+ * The test is size-boxed, not time-boxed.
  *
- * A fixed payload is only right at one speed. 20 MB is a sensible few seconds on
- * a 100 Mbps line, but on a gigabit connection it finishes in 0.16 s - far too
- * short for the measurement to mean anything, and short enough that TCP slow
- * start dominates, so a 1 Gbps line would report as a few hundred Mbps.
+ * Each phase moves a fixed number of bytes and divides by the time that took, so
+ * a run always transfers the same amount of data and the two phases are directly
+ * comparable. A time box was the alternative, but then the amount of data moved
+ * varied with the connection: the same 6 s could be 5 MB on a slow line and
+ * 400 MB on a fast one, and the two phases were never measured over the same
+ * footing.
  *
- * So each phase pulls/repeats modest chunks for a fixed *duration* and divides
- * the bytes actually moved by the time taken. That gives every connection a
- * sample long enough to be meaningful.
+ * The sizes are chosen so the slowest plausible connection still finishes inside
+ * `PHASE_TIMEOUT`, which remains as a hard backstop: a phase that somehow cannot
+ * reach its target stops rather than hanging.
  */
 
 /** Bytes per request. Large enough to keep the pipe busy, small enough to
- *  cancel cheaply when the time box runs out. */
+ *  cancel cheaply and to request only what is still outstanding. */
 const DOWNLOAD_CHUNK = 25_000_000;
 
 /**
@@ -43,14 +45,30 @@ const DOWNLOAD_CHUNK = 25_000_000;
  * Deliberately well under the 4.5 MB request-body limit that serverless hosts
  * enforce, because the self-hosted endpoint is one of them. An 8 MB chunk was
  * refused outright with a 413, which failed the whole upload phase on every run
- * rather than occasionally. Two megabytes still keeps the pipe busy for long
- * enough to measure, and several of them are sent back to back anyway.
+ * rather than occasionally.
  */
 const UPLOAD_CHUNK = 2_000_000;
 
-/** How long each measured phase runs. */
-const DOWNLOAD_DURATION = 6_000;
-const UPLOAD_DURATION = 6_000;
+/**
+ * Total bytes each phase moves.
+ *
+ * Upload is half the download because upload is usually the slower direction, and
+ * a fixed 50 MB up would run far longer than 50 MB down on a typical asymmetric
+ * connection. These keep a slow line finishing well inside `PHASE_TIMEOUT`:
+ * 25 MB up at 5 Mbps is about 40 s, against the 60 s ceiling.
+ */
+const DOWNLOAD_SIZE = 50_000_000;
+const UPLOAD_SIZE = 25_000_000;
+/**
+ * Longest a single upload chunk may take before it is abandoned.
+ *
+ * Only a backstop: the loop already stops once `UPLOAD_SIZE` has been sent. It
+ * exists so one stalled request cannot hold the phase open until the browser
+ * gives up on its own, which is what a hang looks like from the user's side.
+ */
+const UPLOAD_CHUNK_TIMEOUT = 30_000;
+
+
 
 /**
  * Untimed payload used to open the TCP connection first.
@@ -342,13 +360,13 @@ export async function warmUp(server: TestServer, signal: AbortSignal): Promise<v
 }
 
 /**
- * Download for a fixed duration and report the average, plus a live sample
+ * Download a fixed number of bytes and report the average, plus a live sample
  * stream.
  *
- * Chunks are requested back to back until the time box runs out, and the answer
- * is the bytes actually moved divided by the elapsed time. Backing the requests
- * up also keeps the connection hot, which is a truer picture of sustained
- * throughput than timing a single response would be.
+ * Chunks are requested back to back until `DOWNLOAD_SIZE` has arrived, and the
+ * answer is those bytes divided by the elapsed time. Backing the requests up
+ * keeps the connection hot, which is a truer picture of sustained throughput
+ * than timing a single response would be.
  */
 export async function measureDownload(
   server: TestServer,
@@ -358,14 +376,17 @@ export async function measureDownload(
   const sampler = new RateSampler(onSample);
   sampler.start();
 
-  const until = performance.now() + DOWNLOAD_DURATION;
   const hardStop = performance.now() + PHASE_TIMEOUT;
 
   try {
-    while (performance.now() < until && !signal.aborted) {
+    while (sampler.bytes < DOWNLOAD_SIZE && !signal.aborted) {
       if (performance.now() > hardStop) break;
 
-      const response = await fetch(server.downloadUrl(DOWNLOAD_CHUNK, cacheBuster()), {
+      // Never ask for more than is still outstanding, so the target is hit
+      // exactly rather than overshot by a whole extra chunk.
+      const wanted = Math.min(DOWNLOAD_CHUNK, DOWNLOAD_SIZE - sampler.bytes);
+
+      const response = await fetch(server.downloadUrl(wanted, cacheBuster()), {
         cache: "no-store",
         signal,
         mode: "cors",
@@ -382,8 +403,8 @@ export async function measureDownload(
           if (done) break;
           if (value) sampler.add(value.byteLength);
 
-          // Stop the moment the box is full, and drop the rest of this chunk.
-          if (performance.now() >= until || performance.now() > hardStop) {
+          // Stop the moment the size is reached, and drop the rest of this chunk.
+          if (sampler.bytes >= DOWNLOAD_SIZE || performance.now() > hardStop) {
             await reader.cancel().catch(() => undefined);
             break;
           }
@@ -499,7 +520,7 @@ export async function warmUpUpload(server: TestServer, signal: AbortSignal): Pro
 }
 
 /**
- * Upload for a fixed duration and report the average, sampling as it goes.
+ * Upload a fixed number of bytes and report the average, sampling as it goes.
  *
  * Uses XMLHttpRequest rather than fetch on purpose: `upload.onprogress` is the
  * only widely supported way to observe an upload in flight, and without it the
@@ -518,19 +539,26 @@ export async function measureUpload(
   const sampler = new RateSampler(onSample);
   sampler.start();
 
-  const until = performance.now() + UPLOAD_DURATION;
   const hardStop = performance.now() + PHASE_TIMEOUT;
 
   try {
-    while (performance.now() < until && !signal.aborted) {
+    while (sampler.bytes < UPLOAD_SIZE && !signal.aborted) {
       if (performance.now() > hardStop) break;
+
+      /*
+       * The deadline for this chunk is the sooner of the size being reached and
+       * the hard stop. `postChunk` counts bytes from its own progress events, so
+       * the sampler is the authority on how much is outstanding; the deadline
+       * only exists to stop a chunk that will never finish.
+       */
+      const deadline = Math.min(performance.now() + UPLOAD_CHUNK_TIMEOUT, hardStop);
 
       try {
         await postChunk(
           server.uploadUrl(cacheBuster()),
           payload,
           signal,
-          until,
+          deadline,
           (bytes) => sampler.add(bytes),
         );
       } catch (error) {

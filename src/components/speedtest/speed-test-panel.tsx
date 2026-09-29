@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Button, Icon, SegmentedButtons, Surface } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { SpeedGauge } from "./speed-gauge";
@@ -274,6 +275,35 @@ export function SpeedTestPanel() {
   // If the page is on localhost, a same-origin server would measure loopback.
   const localTrap = server.sameOrigin && isLocalhostPage();
 
+  /*
+   * Bring the graphs into view when a test starts on a phone.
+   *
+   * On a narrow screen the dial and its controls fill the first viewport, so the
+   * graphs that the whole test is drawing into sit entirely below the fold. The
+   * user taps Start and then sees nothing happen, which reads as the test having
+   * not started. Scrolling once, at the moment the run begins, puts the thing
+   * being measured on screen.
+   *
+   * Scoped to small screens on purpose: on a desktop the graphs are already
+   * visible beside the dial, and yanking the page out from under someone
+   * mid-click would be hostile. Also skipped when the reader has asked for
+   * reduced motion, and only ever scrolled towards the graphs - never away from
+   * a control the user may be about to need.
+   */
+  const graphsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (phase !== "download") return;
+
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const narrow = window.matchMedia?.("(max-width: 1023px)").matches;
+    if (reduced || !narrow) return;
+
+    graphsRef.current?.scrollIntoView({
+      behavior: reduced ? "auto" : "smooth",
+      block: "start",
+    });
+  }, [phase]);
+
   return (
     <div className="flex w-full flex-col gap-6">
       <Surface
@@ -287,6 +317,7 @@ export function SpeedTestPanel() {
           unit={dialUnit}
           label={dialLabel}
           color={dialColor}
+          complete={finished}
           active={running}
         />
 
@@ -332,7 +363,7 @@ export function SpeedTestPanel() {
         </div>
       </Surface>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div ref={graphsRef} className="grid grid-cols-1 gap-6 scroll-mt-4 lg:grid-cols-2">
         <MetricCard
           icon="download"
           title="Download Speed"
