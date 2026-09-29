@@ -81,8 +81,18 @@ export function SegmentedButtons<T extends string>({
             key={option.value}
             htmlFor={inputId}
             className={cn(
-              "relative flex flex-1 cursor-pointer items-center justify-center gap-2",
+              "relative flex cursor-pointer items-center justify-center gap-2",
+              // Segments size to their label unless the group is filling its
+              // parent. `flex-1` everywhere let a segment shrink below its text,
+              // which wrapped the label onto a second line, and the group's
+              // `overflow-hidden` - there to round the ends - then cut that line
+              // off. "200 MB" and "This server" were losing half their glyphs.
+              fill ? "flex-1" : "flex-none",
               SIZES[size],
+              // Belt and braces: a label never breaks, whatever the container
+              // does. Wrapping here is always wrong, since the control has a
+              // fixed height to clip against.
+              "whitespace-nowrap",
               "transition-colors duration-short2 ease-standard",
               // Hairline separators between segments, but not at the edges.
               index > 0 && "border-l border-outline",

@@ -438,8 +438,14 @@ export function SpeedTestPanel() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-end">
-          <div className="min-w-0">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-end">
+          {/*
+            `shrink-0` rather than `min-w-0`: a group that is allowed to shrink
+            squeezes its own labels, and the wrapped text is what the rounded
+            clip then cuts off. Letting the row wrap onto a second line instead
+            keeps every label on one, at any width.
+          */}
+          <div className="shrink-0">
             <p className="mb-1.5 text-label-sm text-on-surface-variant">Test size</p>
             <SegmentedButtons
               label="Test size"
@@ -454,7 +460,7 @@ export function SpeedTestPanel() {
               onValueChange={setSizeId}
             />
           </div>
-          <div className="min-w-0">
+          <div className="shrink-0">
             <p className="mb-1.5 text-label-sm text-on-surface-variant">Test server</p>
             <SegmentedButtons
               label="Test server"
