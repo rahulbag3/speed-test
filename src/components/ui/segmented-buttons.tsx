@@ -44,7 +44,11 @@ export function SegmentedButtons<T extends string>({
       role="radiogroup"
       aria-label={label}
       className={cn(
-        "inline-flex overflow-hidden border border-outline",
+        // Rounded on the shape scale, and clipping the segments to it. This is
+        // the one control that was drawn square while everything around it was
+        // rounded - buttons, surfaces, the step pills, the tags - so it read as
+        // a foreign object rather than part of the same interface.
+        "inline-flex overflow-hidden rounded-full border border-outline",
         fill && "flex w-full",
         className,
       )}
@@ -79,14 +83,18 @@ export function SegmentedButtons<T extends string>({
               onChange={() => onValueChange(option.value)}
               className="peer sr-only"
             />
-            {/* Focus ring is drawn on the segment, not the hidden input. */}
+            {/*
+              Focus ring is drawn on the segment, not the hidden input.
+
+              An inset ring rather than an outline: the group clips its
+              segments with `overflow-hidden` to get the rounded shape, and an
+              outline sits *outside* the element, so it would be sliced off at
+              the rounded ends. Painted inward it is clipped along with
+              everything else and follows the pill exactly.
+            */}
             <span
               aria-hidden
-              className={cn(
-                "pointer-events-none absolute inset-0 rounded-none",
-                "peer-focus-visible:[outline-width:3px] peer-focus-visible:outline-primary",
-                "peer-focus-visible:-outline-offset-[3px]",
-              )}
+              className="pointer-events-none absolute inset-0 peer-focus-visible:shadow-[inset_0_0_0_3px_var(--color-primary)]"
             />
             {option.icon ? (
               <span aria-hidden className="flex size-4 items-center justify-center [&>svg]:size-4">
