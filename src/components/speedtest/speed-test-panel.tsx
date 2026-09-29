@@ -119,11 +119,33 @@ const QUALITY_COPY: Record<Quality, string> = {
 const DOWNLOAD_COLOR = "var(--color-primary)";
 const UPLOAD_COLOR = "var(--color-tertiary)";
 
-/** The three measured phases, in order. */
+/**
+ * The three measured phases, in order.
+ *
+ * Each carries its own container/on-container pair so the pill takes the accent
+ * of the direction it represents, matching that card's icon, number and graph.
+ * Ping stays neutral: it is not a speed, so it borrows neither direction's
+ * colour and does not imply it belongs to either.
+ */
 const STEPS = [
-  { id: "ping", label: "Ping" },
-  { id: "download", label: "Download" },
-  { id: "upload", label: "Upload" },
+  {
+    id: "ping",
+    label: "Ping",
+    tone: "var(--color-secondary)",
+    active: "bg-surface-container-highest text-on-surface",
+  },
+  {
+    id: "download",
+    label: "Download",
+    tone: DOWNLOAD_COLOR,
+    active: "bg-primary-container text-on-primary-container",
+  },
+  {
+    id: "upload",
+    label: "Upload",
+    tone: UPLOAD_COLOR,
+    active: "bg-tertiary-container text-on-tertiary-container",
+  },
 ] as const;
 
 /**
@@ -150,7 +172,7 @@ function StepIndicator({ phase }: { phase: TestPhase }) {
                 "flex items-center gap-2 rounded-full px-3 py-1.5 text-label-md",
                 "transition-colors duration-medium2 ease-standard",
                 active
-                  ? "bg-primary-container text-on-primary-container"
+                  ? step.active
                   : done
                     ? "bg-secondary-container text-on-secondary-container"
                     : "bg-surface-container text-on-surface-variant",
@@ -159,8 +181,11 @@ function StepIndicator({ phase }: { phase: TestPhase }) {
               <span
                 className={cn(
                   "size-2 rounded-full",
-                  active ? "animate-pulse bg-primary" : done ? "bg-secondary" : "bg-outline",
+                  active ? "animate-pulse" : done ? "bg-secondary" : "bg-outline",
                 )}
+                // Inline so the dot can take the same token as the pill it sits
+                // in; a utility class could not follow both role and scheme.
+                style={active ? { backgroundColor: step.tone } : undefined}
               />
               {step.label}
             </span>
@@ -211,6 +236,9 @@ export function SpeedTestPanel() {
     : (result.download ?? 0);
   const dialUnit = running ? (uploading ? "Mbps up" : "Mbps") : "Mbps";
   const dialLabel = running ? (uploading ? "Upload" : "Download") : "Download";
+  // The dial takes the accent of the direction on screen, so during the upload
+  // phase the arc, unit and caption turn tertiary alongside the upload graph.
+  const dialColor = uploading ? UPLOAD_COLOR : DOWNLOAD_COLOR;
 
   // If the page is on localhost, a same-origin server would measure loopback.
   const localTrap = server.sameOrigin && isLocalhostPage();
@@ -223,7 +251,13 @@ export function SpeedTestPanel() {
         tone="surface-container-low"
         className="flex flex-col items-center gap-6 p-6 sm:p-10"
       >
-        <SpeedGauge value={dialValue} unit={dialUnit} label={dialLabel} active={running} />
+        <SpeedGauge
+          value={dialValue}
+          unit={dialUnit}
+          label={dialLabel}
+          color={dialColor}
+          active={running}
+        />
 
         <div className="flex w-full max-w-md flex-col items-center gap-4">
           <StepIndicator phase={phase} />

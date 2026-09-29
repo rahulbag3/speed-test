@@ -55,6 +55,14 @@ export interface SpeedGaugeProps {
   unit: string;
   /** Short caption above the reading. */
   label: string;
+  /**
+   * Accent for the arc, unit and caption.
+   *
+   * Passed in rather than hard-coded to `primary` so the dial matches the
+   * direction being measured: download reads in primary, upload in tertiary.
+   * Without this the upload phase showed a blue arc next to a pink graph.
+   */
+  color?: string;
   /** Adds a pulsing highlight while a test is running. */
   active?: boolean;
   className?: string;
@@ -64,6 +72,7 @@ export function SpeedGauge({
   value,
   unit,
   label,
+  color = "var(--color-primary)",
   active = false,
   className,
 }: SpeedGaugeProps) {
@@ -114,9 +123,10 @@ export function SpeedGauge({
             pathLength={1}
             strokeDasharray={`${fraction} 1`}
             className={cn(
-              "stroke-primary transition-[stroke-dasharray] duration-medium2 ease-decelerate",
+              "transition-[stroke-dasharray] duration-medium2 ease-decelerate",
               active && "animate-pulse",
             )}
+            style={{ stroke: color }}
           />
         )}
 
@@ -153,7 +163,8 @@ export function SpeedGauge({
           x={CENTER}
           y={CENTER + 22}
           textAnchor="middle"
-          className="fill-primary text-[0.95rem] font-medium"
+          className="text-[0.95rem] font-medium"
+          style={{ fill: color }}
         >
           {unit}
         </text>
