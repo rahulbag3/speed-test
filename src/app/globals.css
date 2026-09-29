@@ -1,26 +1,257 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/*
+ * Material You design system
+ * --------------------------
+ * The raw token values (colour schemes, type scale, shape, motion, elevation)
+ * are generated from TypeScript by `src/lib/material/css.ts` and injected as a
+ * <style> element in the root layout. Everything below wires those variables
+ * into Tailwind so they can be used as ordinary utilities:
+ *
+ *   var(--md-sys-color-primary)   ->  bg-primary / text-primary / border-primary
+ *   var(--md-type-display-lg)     ->  text-display-lg
+ *   var(--md-shape-3xl)           ->  rounded-3xl
+ *   var(--md-elev-3)              ->  shadow-3
+ *   var(--md-ease-emphasized)     ->  ease-emphasized
+ *
+ * `inline` is what makes the runtime theme switch work: Tailwind inlines the
+ * var() reference into each utility instead of copying the value, so changing
+ * the custom property on <html> restyles the page without a rebuild.
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* --- Material 3 colour roles ------------------------------------- */
+  --color-primary: var(--md-sys-color-primary);
+  --color-on-primary: var(--md-sys-color-on-primary);
+  --color-primary-container: var(--md-sys-color-primary-container);
+  --color-on-primary-container: var(--md-sys-color-on-primary-container);
+
+  --color-secondary: var(--md-sys-color-secondary);
+  --color-on-secondary: var(--md-sys-color-on-secondary);
+  --color-secondary-container: var(--md-sys-color-secondary-container);
+  --color-on-secondary-container: var(--md-sys-color-on-secondary-container);
+
+  --color-tertiary: var(--md-sys-color-tertiary);
+  --color-on-tertiary: var(--md-sys-color-on-tertiary);
+  --color-tertiary-container: var(--md-sys-color-tertiary-container);
+  --color-on-tertiary-container: var(--md-sys-color-on-tertiary-container);
+
+  --color-error: var(--md-sys-color-error);
+  --color-on-error: var(--md-sys-color-on-error);
+  --color-error-container: var(--md-sys-color-error-container);
+  --color-on-error-container: var(--md-sys-color-on-error-container);
+
+  --color-surface: var(--md-sys-color-surface);
+  --color-on-surface: var(--md-sys-color-on-surface);
+  --color-surface-variant: var(--md-sys-color-surface-variant);
+  --color-on-surface-variant: var(--md-sys-color-on-surface-variant);
+  --color-surface-dim: var(--md-sys-color-surface-dim);
+  --color-surface-bright: var(--md-sys-color-surface-bright);
+
+  --color-surface-container-lowest: var(--md-sys-color-surface-container-lowest);
+  --color-surface-container-low: var(--md-sys-color-surface-container-low);
+  --color-surface-container: var(--md-sys-color-surface-container);
+  --color-surface-container-high: var(--md-sys-color-surface-container-high);
+  --color-surface-container-highest: var(--md-sys-color-surface-container-highest);
+
+  --color-outline: var(--md-sys-color-outline);
+  --color-outline-variant: var(--md-sys-color-outline-variant);
+
+  --color-inverse-surface: var(--md-sys-color-inverse-surface);
+  --color-inverse-on-surface: var(--md-sys-color-inverse-on-surface);
+  --color-inverse-primary: var(--md-sys-color-inverse-primary);
+
+  --color-scrim: var(--md-sys-color-scrim);
+  --color-shadow: var(--md-sys-color-shadow);
+  --color-surface-tint: var(--md-sys-color-surface-tint);
+
+  /* --- Typography (Material 3 type scale) --------------------------- */
+  --font-sans: var(--font-roboto-flex), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --text-display-xl: var(--md-type-display-xl);
+  --text-display-lg: var(--md-type-display-lg);
+  --text-display-md: var(--md-type-display-md);
+  --text-display-sm: var(--md-type-display-sm);
+  --text-headline-lg: var(--md-type-headline-lg);
+  --text-headline-md: var(--md-type-headline-md);
+  --text-headline-sm: var(--md-type-headline-sm);
+  --text-title-lg: var(--md-type-title-lg);
+  --text-title-md: var(--md-type-title-md);
+  --text-title-sm: var(--md-type-title-sm);
+  --text-body-lg: var(--md-type-body-lg);
+  --text-body-md: var(--md-type-body-md);
+  --text-body-sm: var(--md-type-body-sm);
+  --text-label-lg: var(--md-type-label-lg);
+  --text-label-md: var(--md-type-label-md);
+  --text-label-sm: var(--md-type-label-sm);
+  --text-metric: var(--md-type-metric);
+
+  /* --- Shape (Material 3 shape scale) -------------------------------- */
+  --radius-none: var(--md-shape-none);
+  --radius-xs: var(--md-shape-xs);
+  --radius-sm: var(--md-shape-sm);
+  --radius-md: var(--md-shape-md);
+  --radius-lg: var(--md-shape-lg);
+  --radius-xl: var(--md-shape-xl);
+  --radius-2xl: var(--md-shape-2xl);
+  --radius-3xl: var(--md-shape-3xl);
+  --radius-4xl: var(--md-shape-4xl);
+  --radius-full: var(--md-shape-full);
+
+  /* --- Elevation (Material 3 levels 0-5) ----------------------------- */
+  --shadow-0: var(--md-elev-0);
+  --shadow-1: var(--md-elev-1);
+  --shadow-2: var(--md-elev-2);
+  --shadow-3: var(--md-elev-3);
+  --shadow-4: var(--md-elev-4);
+  --shadow-5: var(--md-elev-5);
+
+  /* --- Motion (Material 3 easing + durations) ----------------------- */
+  --ease-standard: var(--md-ease-standard);
+  --ease-emphasized: var(--md-ease-emphasized);
+  --ease-decelerate: var(--md-ease-decelerate);
+  --ease-accelerate: var(--md-ease-accelerate);
+
+  --duration-short2: var(--md-duration-short2);
+  --duration-short4: var(--md-duration-short4);
+  --duration-medium2: var(--md-duration-medium2);
+  --duration-medium4: var(--md-duration-medium4);
+  --duration-long2: var(--md-duration-long2);
+  --duration-extra-long: var(--md-duration-extraLong);
 }
 
-@media (prefers-color-scheme: dark) {
+/*
+ * Dark mode is driven by a class on <html> rather than the OS preference, so
+ * the in-app Light / Dark / System switch can override `prefers-color-scheme`.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  /*
+   * Tell the browser which built-in widget palette to use, so scrollbars,
+   * form controls and the like match the active scheme.
+   */
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html {
+    height: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    min-height: 100%;
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+    font-family: var(--font-sans);
+    /*
+     * Colour changes are animated so switching accent or scheme reads as a
+     * deliberate transition rather than a jump cut. Scoped to colour so layout
+     * and transform animations elsewhere are unaffected.
+     */
+    transition:
+      background-color var(--duration-medium2) var(--ease-standard),
+      color var(--duration-medium2) var(--ease-standard);
+  }
+
+  /*
+   * Material 3 focus indicator: a 3px primary ring, offset from the element.
+   * `:focus-visible` keeps it off mouse clicks but always available to
+   * keyboard users.
+   */
+  :focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+
+  ::selection {
+    background-color: var(--color-primary-container);
+    color: var(--color-on-primary-container);
+  }
+
+  /* Respect the OS "reduce motion" setting for every transition we add. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /*
+   * Colour cross-fade, active only for the ~320ms the theme provider holds the
+   * `data-theme-switching` attribute. Scoping it this way means hover and press
+   * transitions stay instant the rest of the time, but a theme change still
+   * reads as one deliberate sweep across the page.
+   */
+  html[data-theme-switching] *,
+  html[data-theme-switching] *::before,
+  html[data-theme-switching] *::after {
+    transition:
+      background-color var(--duration-medium2) var(--ease-standard),
+      border-color var(--duration-medium2) var(--ease-standard),
+      color var(--duration-medium2) var(--ease-standard),
+      fill var(--duration-medium2) var(--ease-standard),
+      box-shadow var(--duration-medium2) var(--ease-standard) !important;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/*
+ * Indeterminate linear progress: a segment that sweeps across the track and
+ * fades at the edges. Referenced by the `animate-[md-indeterminate_...]` utility
+ * on <LinearProgress />.
+ */
+@keyframes md-indeterminate {
+  0% {
+    transform: translateX(-110%) scaleX(0.4);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateX(110%) scaleX(0.65);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(310%) scaleX(0.4);
+    opacity: 0.7;
+  }
 }
+
+@layer components {
+  /*
+   * Live numeric readouts. `tabular-nums` keeps digit width constant so a
+   * changing value never reflows its neighbours.
+   */
+  .numeric {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /*
+   * The soft tonal background behind the whole app: a barely-there radial wash
+   * of the primary colour over the surface, which is what gives Material You
+   * screens their "lit from above" quality.
+   */
+  .tonal-backdrop {
+    background-image:
+      radial-gradient(
+        120% 80% at 50% -10%,
+        color-mix(in oklab, var(--color-primary) 16%, transparent) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        90% 60% at 100% 0%,
+        color-mix(in oklab, var(--color-tertiary) 12%, transparent) 0%,
+        transparent 55%
+      );
+  }
+}
+
