@@ -154,13 +154,29 @@ export function useSpeedTest(initialServerId: string): SpeedTestState {
         if (signal.aborted) return;
 
         setPhase("upload");
-        const upload = await measureUpload(target, signal, (sample) => {
-          setLive(sample.mbps);
-          setUploadSamples((current) => [...current, sample]);
-        });
-        if (signal.aborted) return;
-        setResult((current) => ({ ...current, upload }));
-        setLive(upload);
+        try {
+          const upload = await measureUpload(target, signal, (sample) => {
+            setLive(sample.mbps);
+            setUploadSamples((current) => [...current, sample]);
+          });
+          if (signal.aborted) return;
+          setResult((current) => ({ ...current, upload }));
+          setLive(upload);
+        } catch (cause) {
+          /*
+           * The download is already measured and valid. Letting an upload
+           * failure fall through to the outer catch threw the whole run away
+           * and left the page reading "test failed" with no download figure,
+           * even though a good one had been sitting in state the whole time.
+           * Report the upload problem, keep the download, and still finish.
+           */
+          if (signal.aborted) return;
+          setError(
+            cause instanceof Error
+              ? `Upload failed: ${cause.message}`
+              : "Upload failed.",
+          );
+        }
 
         setPhase("done");
       } catch (cause) {

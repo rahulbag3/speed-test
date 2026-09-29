@@ -36,7 +36,17 @@ export type Direction = "download" | "upload";
 /** Bytes per request. Large enough to keep the pipe busy, small enough to
  *  cancel cheaply when the time box runs out. */
 const DOWNLOAD_CHUNK = 25_000_000;
-const UPLOAD_CHUNK = 8_000_000;
+
+/**
+ * Upload chunk.
+ *
+ * Deliberately well under the 4.5 MB request-body limit that serverless hosts
+ * enforce, because the self-hosted endpoint is one of them. An 8 MB chunk was
+ * refused outright with a 413, which failed the whole upload phase on every run
+ * rather than occasionally. Two megabytes still keeps the pipe busy for long
+ * enough to measure, and several of them are sent back to back anyway.
+ */
+const UPLOAD_CHUNK = 2_000_000;
 
 /** How long each measured phase runs. */
 const DOWNLOAD_DURATION = 6_000;
@@ -515,13 +525,25 @@ export async function measureUpload(
     while (performance.now() < until && !signal.aborted) {
       if (performance.now() > hardStop) break;
 
-      await postChunk(
-        server.uploadUrl(cacheBuster()),
-        payload,
-        signal,
-        until,
-        (bytes) => sampler.add(bytes),
-      );
+      try {
+        await postChunk(
+          server.uploadUrl(cacheBuster()),
+          payload,
+          signal,
+          until,
+          (bytes) => sampler.add(bytes),
+        );
+      } catch (error) {
+        /*
+         * One chunk failing says nothing about the chunks that already went
+         * through, so a partial transfer is still a measurement. Throwing here
+         * used to discard a phase that had been running for seconds and report
+         * no upload at all. Only a phase that moved no bytes is a real failure,
+         * and that still throws below.
+         */
+        if (sampler.bytes > 0) break;
+        throw error;
+      }
     }
   } finally {
     sampler.stop();

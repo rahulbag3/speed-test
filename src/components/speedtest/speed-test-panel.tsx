@@ -41,6 +41,7 @@ function MetricCard({
   unit,
   samples,
   color,
+  tone,
   active,
 }: {
   icon: "download" | "upload";
@@ -48,7 +49,10 @@ function MetricCard({
   value: number | null;
   unit: string;
   samples: SpeedSample[];
+  /** Solid accent, for the icon and the reading. */
   color: string;
+  /** Container pair for the tags, so they match the phase pills exactly. */
+  tone: string;
   active: boolean;
 }) {
   // The headline figure is the sustained average - the same number the result is
@@ -73,19 +77,23 @@ function MetricCard({
             </span>
             <span className="text-label-lg text-on-surface-variant">{unit}</span>
             {/*
-              The headline is a sustained average, so it says so. The tag wears
-              the same accent as the reading and the curve, so the number, its
-              tag and the graph all read as one thing; a neutral tag would look
-              like unrelated chrome. It sits beside the number rather than on
-              the curve, because the reading belongs to the card and printing it
-              as a graph label too would show the same figure twice.
+              The headline is a sustained average, so it says so.
+
+              It wears the same Material container pair as that direction's phase
+              pill, so every tag on the page is the same colour by construction.
+              This used to be a hand-rolled `color-mix` tint of the accent, which
+              is a different colour from the container role and left the "avg"
+              tag visibly not matching the "Download" / "Upload" pills.
+
+              It sits beside the number rather than on the curve, because the
+              reading belongs to the card and printing it as a graph label too
+              would show the same figure twice.
             */}
             <span
-              className="numeric ml-1 rounded-full px-1.5 text-[10px] leading-4"
-              style={{
-                color,
-                backgroundColor: `color-mix(in oklab, ${color} 16%, transparent)`,
-              }}
+              className={cn(
+                "numeric ml-1 rounded-full px-1.5 text-[10px] leading-4",
+                tone,
+              )}
             >
               avg
             </span>
@@ -115,9 +123,32 @@ const QUALITY_COPY: Record<Quality, string> = {
   poor: "Poor connection",
 };
 
-/** Download and upload get different roles so the two graphs read apart. */
-const DOWNLOAD_COLOR = "var(--color-primary)";
-const UPLOAD_COLOR = "var(--color-tertiary)";
+/**
+ * The accent roles for each direction.
+ *
+ * Download and upload get different roles so the two graphs read apart, and so
+ * every tag for a direction is drawn from one place. The pill, its dot and the
+ * card's "avg" tag all read from here, which is what keeps them the same colour:
+ * defining the container pair separately for each is how they drifted apart.
+ *
+ * `pill` is the container pair, used for a filled tag. `on` is the matching
+ * on-container text, already inside `pill`.
+ */
+const DOWNLOAD_ACCENT = {
+  solid: "var(--color-primary)",
+  pill: "bg-primary-container text-on-primary-container",
+  /** The solid accent reads well on the container at this size. */
+  onPill: "var(--color-primary)",
+} as const;
+
+const UPLOAD_ACCENT = {
+  solid: "var(--color-tertiary)",
+  pill: "bg-tertiary-container text-on-tertiary-container",
+  onPill: "var(--color-tertiary)",
+} as const;
+
+const DOWNLOAD_COLOR = DOWNLOAD_ACCENT.solid;
+const UPLOAD_COLOR = UPLOAD_ACCENT.solid;
 
 /**
  * The three measured phases, in order.
@@ -137,14 +168,14 @@ const STEPS = [
   {
     id: "download",
     label: "Download",
-    tone: DOWNLOAD_COLOR,
-    active: "bg-primary-container text-on-primary-container",
+    tone: DOWNLOAD_ACCENT.onPill,
+    active: DOWNLOAD_ACCENT.pill,
   },
   {
     id: "upload",
     label: "Upload",
-    tone: UPLOAD_COLOR,
-    active: "bg-tertiary-container text-on-tertiary-container",
+    tone: UPLOAD_ACCENT.onPill,
+    active: UPLOAD_ACCENT.pill,
   },
 ] as const;
 
@@ -308,7 +339,8 @@ export function SpeedTestPanel() {
           value={result.download}
           unit="Mbps"
           samples={downloadSamples}
-          color={DOWNLOAD_COLOR}
+          color={DOWNLOAD_ACCENT.solid}
+          tone={DOWNLOAD_ACCENT.pill}
           active={downloading}
         />
         <MetricCard
@@ -317,7 +349,8 @@ export function SpeedTestPanel() {
           value={result.upload}
           unit="Mbps"
           samples={uploadSamples}
-          color={UPLOAD_COLOR}
+          color={UPLOAD_ACCENT.solid}
+          tone={UPLOAD_ACCENT.pill}
           active={uploading}
         />
       </div>
