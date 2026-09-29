@@ -440,9 +440,7 @@ export function SpeedTestPanel() {
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-end">
           <div className="min-w-0">
-            <p className="mb-1.5 text-label-md text-on-surface-variant">
-              Test size
-            </p>
+            <p className="mb-1.5 text-label-sm text-on-surface-variant">Test size</p>
             <SegmentedButtons
               label="Test size"
               options={TEST_SIZES.map((entry) => ({
@@ -457,9 +455,7 @@ export function SpeedTestPanel() {
             />
           </div>
           <div className="min-w-0">
-            <p className="mb-1.5 text-label-md text-on-surface-variant">
-              Test server
-            </p>
+            <p className="mb-1.5 text-label-sm text-on-surface-variant">Test server</p>
             <SegmentedButtons
               label="Test server"
               options={TEST_SERVERS.map((entry) => ({

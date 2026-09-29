@@ -16,6 +16,7 @@ export {
   SegmentedButtons,
   type SegmentedButtonsProps,
   type SegmentedOption,
+  type SegmentedSize,
 } from "./segmented-buttons";
 export { Slider, type SliderProps, type SliderSize } from "./slider";
 export {

@@ -18,12 +18,30 @@ export interface SegmentedOption<T extends string> {
   disabled?: boolean;
 }
 
+/**
+ * Heights and type, matching the Button and Chip scales so the controls in the
+ * kit line up with one another.
+ *
+ * A segmented group is a picker, not a call to action, so it defaults to the
+ * small step: driven by padding alone it came out around 40px, taller than a
+ * small Button (h-8) and a Chip (h-8), which made two quiet option rows read as
+ * the loudest controls on the page. Explicit heights also stop the control
+ * changing size with the length of its longest label.
+ */
+const SIZES = {
+  sm: "h-8 px-3 text-label-md",
+  md: "h-10 px-4 text-label-lg",
+} as const;
+
+export type SegmentedSize = keyof typeof SIZES;
+
 export interface SegmentedButtonsProps<T extends string> {
   /** Accessible name for the group. */
   label: string;
   options: readonly SegmentedOption<T>[];
   value: T;
   onValueChange: (value: T) => void;
+  size?: SegmentedSize;
   /** Stretch the group to the width of its parent. */
   fill?: boolean;
   className?: string;
@@ -34,6 +52,7 @@ export function SegmentedButtons<T extends string>({
   options,
   value,
   onValueChange,
+  size = "sm",
   fill = false,
   className,
 }: SegmentedButtonsProps<T>) {
@@ -63,7 +82,7 @@ export function SegmentedButtons<T extends string>({
             htmlFor={inputId}
             className={cn(
               "relative flex flex-1 cursor-pointer items-center justify-center gap-2",
-              "px-4 py-2.5 text-label-lg",
+              SIZES[size],
               "transition-colors duration-short2 ease-standard",
               // Hairline separators between segments, but not at the edges.
               index > 0 && "border-l border-outline",
