@@ -78,7 +78,10 @@ while (performance.now() - start < DURATION) {
       const cutoff = now - WINDOW;
       while (windowPoints.length > 1 && windowPoints[0].at < cutoff) windowPoints.shift();
       const first = windowPoints[0];
-      if (now - first.at >= WINDOW * 0.5) {
+      // Mirrors RateSampler.tick(): wait for a near-full window, so the initial
+      // CDN gulp is never divided by a half-length span and read as a sustained
+      // rate. See SMOOTHING_WINDOW * 0.9 in src/lib/speedtest/measure.ts.
+      if (now - first.at >= WINDOW * 0.9) {
         const measured = mbps(total - first.cumulative, now - first.at);
         const cap = Math.max(emitted * MAX_STEP_RATIO, MAX_STEP_FLOOR);
         emitted += Math.max(-cap, Math.min(cap, measured - emitted));

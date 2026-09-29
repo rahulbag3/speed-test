@@ -48,10 +48,34 @@ interface Point {
   y: number;
 }
 
+/**
+ * Round the axis up to a 1 / 2 / 5 x 10^n step.
+ *
+ * Without this the axis is just `max * 1.15`, which rescales on every single
+ * sample: the highest point always sits at the same height, so the curve is
+ * effectively frozen at the top of the box and its shape tells you nothing. A
+ * single early burst also stretches the axis for the rest of the test and
+ * squashes every later reading into the floor.
+ *
+ * Snapping to a coarse step means the axis holds still for a while and then
+ * moves once, so the line's movement is the data moving rather than the axis
+ * being dragged around underneath it.
+ */
+function niceCeiling(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 1;
+  const magnitude = 10 ** Math.floor(Math.log10(value));
+  for (const step of [1, 2, 5]) {
+    if (step * magnitude >= value) return step * magnitude;
+  }
+  return 10 * magnitude;
+}
+
 function toPoints(samples: SpeedSample[]): Point[] {
   if (samples.length === 0) return [];
 
-  const peak = Math.max(...samples.map((sample) => sample.mbps), 1) * 1.15;
+  // Headroom for the stroke, then snapped to a coarse step so the axis does not
+  // creep upward on every sample as the peak inches higher.
+  const peak = niceCeiling(Math.max(...samples.map((sample) => sample.mbps), 1) * 1.1);
   const last = samples.length - 1;
 
   return samples.map((sample, index) => ({

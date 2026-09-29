@@ -69,13 +69,6 @@ export function SpeedGauge({
 }: SpeedGaugeProps) {
   const fraction = normalise(value);
   const track = arcPath(CENTER, CENTER, RADIUS, START_ANGLE, START_ANGLE + SWEEP);
-  const valueArc = arcPath(
-    CENTER,
-    CENTER,
-    RADIUS,
-    START_ANGLE,
-    START_ANGLE + SWEEP * fraction,
-  );
 
   return (
     <div className={cn("relative grid place-items-center", className)}>
@@ -99,15 +92,29 @@ export function SpeedGauge({
           className="stroke-surface-container-highest"
         />
 
-        {/* Value arc. Rendered only when there is something to show. */}
+        {/*
+          Value arc.
+
+          It is drawn as the *full* sweep and revealed with `stroke-dasharray`,
+          because the arc's length is constant. Animating `d` instead - redrawing
+          the path to a new angle - changes the geometry rather than the paint,
+          and browsers cannot interpolate that: the arc jumped between discrete
+          shapes on every 120 ms sample, which read as stutter. Dashing a fixed
+          path lets the existing transition actually animate.
+
+          `pathLength` normalises the geometry so the dash maths is in 0-1 units
+          and does not have to know the real arc length.
+        */}
         {fraction > 0.001 && (
           <path
-            d={valueArc}
+            d={track}
             fill="none"
             strokeWidth={STROKE}
             strokeLinecap="round"
+            pathLength={1}
+            strokeDasharray={`${fraction} 1`}
             className={cn(
-              "stroke-primary transition-[stroke-dashoffset] duration-medium2 ease-standard",
+              "stroke-primary transition-[stroke-dasharray] duration-medium2 ease-decelerate",
               active && "animate-pulse",
             )}
           />

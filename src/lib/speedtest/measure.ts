@@ -197,8 +197,18 @@ class RateSampler {
     const first = this.window[0];
     const span = now - first.at;
 
-    // Too short a span to mean anything; wait for the window to fill.
-    if (span < SMOOTHING_WINDOW * 0.5) return;
+    /*
+     * Wait for the window to be nearly full before trusting it.
+     *
+     * A half-filled window divides the bytes seen so far by a short span at the
+     * exact moment the connection has just opened, when a CDN hands over its
+     * first gulp in one burst. That combination reports the burst as though it
+     * were a sustained rate, and it lands as the peak marker on a graph whose
+     * real peak is lower - the spike the reading appears to make off the mark.
+     * Requiring a full window costs about a third of a second of blank graph at
+     * the very start, and never reports a rate the connection did not sustain.
+     */
+    if (span < SMOOTHING_WINDOW * 0.9) return;
 
     const measured = toMbps(this.total - first.cumulative, span);
 
