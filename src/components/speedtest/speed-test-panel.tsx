@@ -8,6 +8,7 @@ import { SpeedGraph } from "./speed-graph";
 import { useSpeedTest, type TestPhase } from "./use-speed-test";
 import {
   DEFAULT_SERVER_ID,
+  describeColo,
   isLocalhostPage,
   TEST_SERVERS,
 } from "@/lib/speedtest/servers";
@@ -251,6 +252,7 @@ export function SpeedTestPanel() {
     running,
     server,
     setServerId,
+    edge,
     sizeId,
     setSizeId,
     sizeLabel,
@@ -480,6 +482,40 @@ export function SpeedTestPanel() {
           per direction. A larger size keeps the connection working harder for
           longer, so it suits a fast line.
         </p>
+
+        {/*
+          Where the test actually runs.
+
+          The default server is anycast, so this is already the nearest data
+          centre available - this line just names it, which is what makes the
+          number interpretable. A speed measured to a nearby edge and one
+          measured across an ocean are not the same figure, and without the
+          destination there is no way to tell which you got.
+        */}
+        {edge ? (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-2xl bg-surface-container px-4 py-3 text-body-sm">
+            <span className="flex items-center gap-2">
+              <span className="text-on-surface-variant">Nearest edge</span>
+              <span className="numeric font-medium text-on-surface">
+                {describeColo(edge.colo)}
+              </span>
+              <span className="text-label-sm text-on-surface-variant">
+                {edge.rtt} ms
+              </span>
+            </span>
+            {edge.ip ? (
+              <span className="flex items-center gap-2">
+                <span className="text-on-surface-variant">Your IP</span>
+                <span className="numeric font-medium text-on-surface">{edge.ip}</span>
+                {edge.loc ? (
+                  <span className="text-label-sm text-on-surface-variant">
+                    {edge.loc}
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
         {localTrap ? (
           <p className="rounded-2xl bg-error-container px-4 py-3 text-body-sm text-on-error-container">

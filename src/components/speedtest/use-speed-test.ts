@@ -14,7 +14,7 @@ import {
   type SpeedSample,
   type TestSizeId,
 } from "@/lib/speedtest/measure";
-import { getServer, type TestServer } from "@/lib/speedtest/servers";
+import { detectEdge, getServer, type EdgeInfo, type TestServer } from "@/lib/speedtest/servers";
 
 export type TestPhase =
   | "idle"
@@ -66,6 +66,8 @@ export interface SpeedTestState {
   running: boolean;
   server: TestServer;
   setServerId: (id: string) => void;
+  /** Nearest edge and reader address, once detected. Null until then. */
+  edge: EdgeInfo | null;
   /** Payload size the next run will use. */
   sizeId: TestSizeId;
   setSizeId: (id: TestSizeId) => void;
@@ -91,9 +93,27 @@ export function useSpeedTest(initialServerId: string): SpeedTestState {
   const [downloadSamples, setDownloadSamples] = useState<SpeedSample[]>([]);
   const [uploadSamples, setUploadSamples] = useState<SpeedSample[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [edge, setEdge] = useState<EdgeInfo | null>(null);
 
   const controllerRef = useRef<AbortController | null>(null);
   const server = getServer(serverId);
+
+  /*
+   * Find the nearest edge once on mount.
+   *
+   * The test always runs against the closest Cloudflare data centre anyway -
+   * the address is anycast - so this only reports where that turned out to be.
+   * It is fetched on its own rather than folded into a test run so the reader
+   * can see the destination before starting, and so a result is never held up
+   * waiting on a lookup that may be blocked.
+   */
+  useEffect(() => {
+    const controller = new AbortController();
+    void detectEdge(controller.signal).then((found) => {
+      if (!controller.signal.aborted) setEdge(found);
+    });
+    return () => controller.abort();
+  }, []);
 
   // Abandon any in-flight request if the component unmounts.
   useEffect(() => {
@@ -217,6 +237,7 @@ export function useSpeedTest(initialServerId: string): SpeedTestState {
     running: phase !== "idle" && phase !== "done" && phase !== "error",
     server,
     setServerId,
+    edge,
     sizeId,
     setSizeId,
     sizeLabel: getTestSize(sizeId).label,
